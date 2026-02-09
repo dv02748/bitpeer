@@ -1,0 +1,63 @@
+# Copy to `config.toml` and fill in the Bybit P2P JSON endpoint details.
+
+[app]
+timezone = "Asia/Ho_Chi_Minh"
+data_dir = "data"
+
+[collector]
+interval_seconds = 30
+max_pages = 5
+min_offers_after_filter = 30
+
+# Primary plan: call the same JSON endpoint that the Bybit web app calls for P2P ads.
+# Capture it via Chrome DevTools (Network tab) and paste:
+# - `url`
+# - `method` (usually POST)
+# - minimal required headers
+# - a request body template
+#
+# The code will iterate over markets below and fill `fiat` / `side` / `page`.
+
+[bybit_p2p_endpoint]
+url = "https://www.bybit.com/x-api/fiat/otc/item/online"
+method = "POST"
+timeout_seconds = 20
+
+[bybit_p2p_endpoint.headers]
+accept = "application/json"
+accept-encoding = "gzip"
+content-type = "application/json;charset=UTF-8"
+origin = "https://www.bybit.com"
+platform = "PC"
+referer = "https://www.bybit.com/en/p2p"
+
+# Body template is endpoint-specific. Keep it as close to the captured request as possible.
+# Based on a captured request to `/x-api/fiat/otc/item/online`.
+[bybit_p2p_endpoint.body_template]
+userId = ""
+tokenId = "USDT"
+currencyId = "{fiat}"
+payment = []
+side = "{endpoint_side}"
+size = "10"
+page = "{page}"
+amount = ""
+vaMaker = false
+bulkMaker = false
+canTrade = true
+verificationFilter = 0
+sortType = "OVERALL_RANKING"
+paymentPeriod = []
+itemRegion = 1
+
+[[markets]]
+name = "RUB_BUY" # user buys USDT with RUB (advertisers SELL USDT)
+fiat = "RUB"
+side = "SELL"
+endpoint_side = "1" # from DevTools: p2p/buy/... usually side="1"
+
+[[markets]]
+name = "VND_SELL" # user sells USDT for VND (advertisers BUY USDT)
+fiat = "VND"
+side = "BUY"
+endpoint_side = "REPLACE_ME" # paste from DevTools: p2p/sell/... side value

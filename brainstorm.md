@@ -1,0 +1,2 @@
+Hey, ChatGPT. I want to design an analytics application for P2P trading on the (Bybit exchange) [https://www.bybit.com/en/]. The app should analyze order book snapshots, price distributions, spreads, advertiser behavior, volumes, and time-based patterns to support better P2P trading decisions. I want to carefully design the system, metrics, and assumptions.
+What critical questions should I answer regarding data collection, bias, volatility, liquidity, time-of-day effects, and user decision support to make this app reliable and useful?
