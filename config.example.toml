@@ -60,4 +60,4 @@ endpoint_side = "1" # from DevTools: p2p/buy/... usually side="1"
 name = "VND_SELL" # user sells USDT for VND (advertisers BUY USDT)
 fiat = "VND"
 side = "BUY"
-endpoint_side = "REPLACE_ME" # paste from DevTools: p2p/sell/... side value
+endpoint_side = "0" # for p2p/sell/... on this endpoint
