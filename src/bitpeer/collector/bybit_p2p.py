@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import math
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -115,24 +117,70 @@ async def collect_once(cfg: AppConfig, store: RawStore) -> None:
     timeout = httpx.Timeout(timeout=endpoint.timeout_seconds)
 
     async with httpx.AsyncClient(timeout=timeout) as client:
-        tasks: list[asyncio.Task[RawFetchRecord]] = []
         for market in cfg.markets:
-            for page in range(1, cfg.collector.max_pages + 1):
+            first = await fetch_market_page(client, cfg, market, page=1)
+            _log_and_store(store, first)
+
+            total_pages = _derive_total_pages(first)
+            # `max_pages <= 0` means "no manual limit", but still keep a safety cap.
+            safety_cap = 200
+            if cfg.collector.max_pages > 0:
+                pages_to_fetch = min(total_pages, cfg.collector.max_pages, safety_cap)
+            else:
+                pages_to_fetch = min(total_pages, safety_cap)
+
+            if pages_to_fetch <= 1:
+                continue
+
+            tasks: list[asyncio.Task[RawFetchRecord]] = []
+            for page in range(2, pages_to_fetch + 1):
                 tasks.append(asyncio.create_task(fetch_market_page(client, cfg, market, page)))
 
-        for task in asyncio.as_completed(tasks):
-            rec = await task
-            out_path = store.append(rec)
-            if rec.error:
-                log.warning("fetch failed market=%s page=%s error=%s", rec.market, rec.page, rec.error)
-            elif rec.http_status and rec.http_status >= 400:
-                log.warning(
-                    "fetch http error market=%s page=%s status=%s -> %s",
-                    rec.market,
-                    rec.page,
-                    rec.http_status,
-                    out_path,
-                )
+            for task in asyncio.as_completed(tasks):
+                rec = await task
+                _log_and_store(store, rec)
+
+
+def _derive_total_pages(record: RawFetchRecord) -> int:
+    if not record.response_text:
+        return 1
+    try:
+        payload = json.loads(record.response_text)
+    except Exception:  # noqa: BLE001
+        return 1
+
+    result = payload.get("result") if isinstance(payload, dict) else None
+    if not isinstance(result, dict):
+        return 1
+
+    count_raw = result.get("count")
+    try:
+        total_count = int(count_raw)
+    except Exception:  # noqa: BLE001
+        return 1
+
+    # Request body keeps size as a string in our endpoint template.
+    size_raw = record.request_body.get("size", 10)
+    try:
+        page_size = max(int(size_raw), 1)
+    except Exception:  # noqa: BLE001
+        page_size = 10
+
+    return max(1, math.ceil(total_count / page_size))
+
+
+def _log_and_store(store: RawStore, rec: RawFetchRecord) -> None:
+    out_path = store.append(rec)
+    if rec.error:
+        log.warning("fetch failed market=%s page=%s error=%s", rec.market, rec.page, rec.error)
+    elif rec.http_status and rec.http_status >= 400:
+        log.warning(
+            "fetch http error market=%s page=%s status=%s -> %s",
+            rec.market,
+            rec.page,
+            rec.http_status,
+            out_path,
+        )
 
 
 async def collect_forever(cfg: AppConfig, *, once: bool = False) -> None:

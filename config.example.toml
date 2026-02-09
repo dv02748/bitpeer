@@ -6,7 +6,7 @@ data_dir = "data"
 
 [collector]
 interval_seconds = 30
-max_pages = 5
+max_pages = 0
 min_offers_after_filter = 30
 
 # Primary plan: call the same JSON endpoint that the Bybit web app calls for P2P ads.
@@ -39,7 +39,7 @@ tokenId = "USDT"
 currencyId = "{fiat}"
 payment = []
 side = "{endpoint_side}"
-size = "10"
+size = "100"
 page = "{page}"
 amount = ""
 vaMaker = false
